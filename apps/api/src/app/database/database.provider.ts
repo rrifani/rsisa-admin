@@ -9,8 +9,8 @@ export const databaseProvider = {
   provide: DATABASE_POOL,
   inject: [ConfigService],
   useFactory: async (configService: ConfigService) => {
-    const host = configService.get<string>('DB_SERVER');
-    const dbName = configService.get<string>('DB_DATABASE');
+    const host = configService.get<string>('DB_HOST');
+    const dbName = configService.get<string>('DB_NAME');
     const port = Number(configService.get<string>('DB_PORT')) || 1433;
 
     const config: sql.config = {

@@ -1,9 +1,3 @@
-import * as dotenv from 'dotenv';
-import * as path from 'path';
-
-// load .env dari folder source apps/api, eksplisit, sebelum module lain di-load
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
-
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
