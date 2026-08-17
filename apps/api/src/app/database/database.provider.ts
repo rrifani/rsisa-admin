@@ -1,16 +1,16 @@
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
 import * as sql from 'mssql';
+import { DATABASE_POOL } from '../../constants';
 
-export const DATABASE_POOL = 'DATABASE_POOL';
 const logger = new Logger('DatabaseProvider');
 
 export const databaseProvider = {
   provide: DATABASE_POOL,
   inject: [ConfigService],
   useFactory: async (configService: ConfigService) => {
-    const host = configService.get<string>('DB_HOST');
-    const dbName = configService.get<string>('DB_NAME');
+    const host = configService.get<string>('DB_SERVER');
+    const dbName = configService.get<string>('DB_DATABASE');
     const port = Number(configService.get<string>('DB_PORT')) || 1433;
 
     const config: sql.config = {
@@ -43,3 +43,5 @@ export const databaseProvider = {
     }
   },
 };
+
+export { DATABASE_POOL };
