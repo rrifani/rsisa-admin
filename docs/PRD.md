@@ -1,183 +1,208 @@
-# Product Requirements Document (PRD)
+# PRD — RSISA Admin (Nx Monorepo)
 
-## RSISA Admin — Sistem Administrasi Rumah Sakit
-
-|                    |                                       |
-| ------------------ | ------------------------------------- |
-| **Nama Produk**    | RSISA Admin                           |
-| **Versi Dokumen**  | 1.0                                   |
-| **Tanggal**        | 16 Agustus 2026                       |
-| **Status**         | Tahap Fondasi (Foundation / Sprint 0) |
-| **Pemilik Produk** | Tim Pengembang RSISA                  |
+**Versi:** 0.1 (Draft — Fase Setup Awal)
+**Tanggal:** 17 Agustus 2026
+**Status:** In Progress — Backend foundation selesai, frontend belum dimulai
 
 ---
 
-## 1. Ringkasan Eksekutif
+## 1. Latar Belakang & Tujuan
 
-RSISA Admin adalah sistem administrasi berbasis web yang sedang dibangun untuk mengelola operasional Rumah Sakit ISA. Produk ini terdiri dari **Backend API** yang dibangun dengan kerangka kerja modern (NestJS) di atas monorepo Nx, terhubung ke database **Microsoft SQL Server**.
+RSISA Admin adalah sistem internal rumah sakit yang terdiri dari beberapa aplikasi frontend (dashboard manajemen, aplikasi jasa medik) yang dilayani oleh satu backend API (NestJS), dalam satu Nx monorepo bernama `rsisa-admin`.
 
-Saat ini produk berada pada tahap fondasi: arsitektur proyek, koneksi database, dan kerangka modul autentikasi telah disiapkan, namun fitur bisnis utama belum diimplementasikan.
+Backend menyambung ke database **Microsoft SQL Server 2016** yang sudah ada (existing database `DBRSISA_BANJARBARU_DEVELOPMENT`), tanpa ORM migration — akses data memakai pola repository dengan query langsung ke tabel yang sudah ada.
 
----
+### Tujuan fase ini
 
-## 2. Latar Belakang & Masalah
-
-Rumah sakit membutuhkan sistem terpusat untuk mengelola data operasional (pasien, pegawai, layanan, dan laporan). Proses manual atau sistem terpisah menyebabkan:
-
-- Duplikasi dan inkonsistensi data antar unit.
-- Kesulitan audit dan pelacakan aktivitas admin.
-- Waktu respons layanan yang lambat.
-
-**Solusi:** sebuah aplikasi admin terpusat dengan API yang aman, auditable, dan dapat dikembangkan secara bertahap (modular monorepo).
+- Menyiapkan struktur monorepo Nx yang bisa menampung 1 backend (NestJS) dan beberapa frontend (React) dalam satu repo.
+- Memastikan backend bisa konek ke SQL Server 2016 existing.
+- Menyiapkan pondasi modular (dashboard, jasa medik, shared) agar backend bisa melayani banyak frontend dari satu service.
+- Tetap kompatibel dengan **Node.js 18.20.2** sebagai target runtime.
 
 ---
 
-## 3. Tujuan & Sasaran
+## 2. Tech Stack
 
-### Tujuan Produk
+| Layer                      | Teknologi            | Versi                                          |
+| -------------------------- | -------------------- | ---------------------------------------------- |
+| Monorepo tooling           | Nx                   | 19.7.2                                         |
+| Backend framework          | NestJS               | ^10.0.2                                        |
+| Bahasa                     | TypeScript           | 5.3.2                                          |
+| Database                   | Microsoft SQL Server | 2016 (on-premise)                              |
+| Driver DB                  | `mssql` (tedious)    | terbaru kompatibel                             |
+| Package manager            | Yarn                 | 1.22.19 (classic)                              |
+| Runtime target             | Node.js              | **18.20.2** (dikunci via `.nvmrc` + `engines`) |
+| Frontend (rencana)         | React + Vite         | 18.3.1 / ^5.0.0                                |
+| State management (rencana) | Redux Toolkit        | ^2.2.7                                         |
+| UI Library (rencana)       | PrimeReact           | ^10.8.2                                        |
 
-1. Menyediakan API backend yang andal dan aman sebagai fondasi sistem administrasi rumah sakit.
-2. Memastikan konektivitas stabil ke database pusat (SQL Server) dengan connection pooling.
-3. Menyiapkan sistem autentikasi dan otorisasi untuk mengamankan seluruh endpoint administratif.
-
-### Metrik Keberhasilan (KPI)
-
-| Metrik                        | Target                                      |
-| ----------------------------- | ------------------------------------------- |
-| Ketersediaan API (uptime)     | ≥ 99% pada jam operasional                  |
-| Latensi respons endpoint umum | < 300 ms (P95)                              |
-| Kegagalan koneksi database    | 0 pada kondisi normal (pool max 20 koneksi) |
-| Coverage unit test            | ≥ 80% pada modul kritis                     |
-
----
-
-## 4. Ruang Lingkup
-
-### 4.1 Dalam Lingkup (MVP & Roadmap)
-
-- ✅ Arsitektur monorepo Nx dengan aplikasi API (NestJS)
-- ✅ Koneksi dan health-check database SQL Server
-- 🚧 Modul autentikasi (login, guard, DTO, decorator) — saat ini baru kerangka
-- ⬜ Manajemen pengguna admin & role-based access control (RBAC)
-- ⬜ Modul data master rumah sakit (pasien, pegawai, poli/tindakan, dll.)
-- ⬜ Dashboard admin & pelaporan
-
-### 4.2 Di Luar Lingkup (untuk saat ini)
-
-- Aplikasi mobile
-- Integrasi sistem BPJS/Satusehat (fase lanjutan, dapat dievaluasi kembali)
-- Pembayaran online
+Referensi stack frontend diambil dari project existing `bridging-eklaim` (react-hook-form, zod, primereact, dll) yang akan dipakai ulang saat generate app React.
 
 ---
 
-## 5. Fitur & Kebutuhan Fungsional
-
-### 5.1 Sudah Diimplementasikan (Baseline Saat Ini)
-
-| ID   | Fitur                       | Deskripsi                                                                                                                                                                                             | Status         |
-| ---- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
-| F-01 | Bootstrap Aplikasi API      | Server NestJS berjalan dengan global prefix `/api` pada port default `3000` (dapat dikonfigurasi via `PORT`).                                                                                         | ✅ Selesai     |
-| F-02 | Koneksi Database SQL Server | Provider koneksi global menggunakan `mssql` dengan connection pool (max 20, idle timeout 30 detik), konfigurasi via environment variable (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`). | ✅ Selesai     |
-| F-03 | Health Check Database       | Endpoint `GET /api/db-check` menjalankan query `SELECT GETDATE()` untuk memverifikasi konektivitas database dan mengembalikan status.                                                                 | ✅ Selesai     |
-| F-04 | Endpoint Dasar              | `GET /api` mengembalikan pesan "Hello API" sebagai smoke test.                                                                                                                                        | ✅ Selesai     |
-| F-05 | Kerangka Modul Autentikasi  | Modul `Auth` (controller, service, guard, DTO, decorator) telah disiapkan sebagai fondasi keamanan.                                                                                                   | 🚧 Scaffolding |
-
-### 5.2 Direncanakan (Derived dari Struktur Kode)
-
-| ID   | Fitur                    | Deskripsi                                                                                                                            | Prioritas |
-| ---- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | --------- |
-| F-10 | Login & Autentikasi      | `POST /api/auth/login` dengan kredensial, mengeluarkan token sesi/JWT; DTO validasi input.                                           | P0        |
-| F-11 | Route Protection (Guard) | `AuthGuard` memvalidasi token pada request; saat ini guard sudah terpasang namun selalu mengembalikan `true` (belum ada verifikasi). | P0        |
-| F-12 | Custom Decorator Auth    | Decorator (mis. `@CurrentUser()`, `@Public()`) untuk mengambil identitas user pada handler. File sudah disiapkan namun masih kosong. | P0        |
-| F-13 | Manajemen Pengguna Admin | CRUD pengguna admin, hash password, aktif/nonaktif.                                                                                  | P1        |
-| F-14 | Role & Permission (RBAC) | Role admin (super admin, admin unit, dll.) dengan batasan akses per endpoint.                                                        | P1        |
-| F-15 | Modul Data Master        | Modul-modul bisnis rumah sakit (pasien, pegawai, poli, tindakan) mengikuti pola module NestJS yang sudah ada.                        | P1        |
-| F-16 | Audit Log                | Pencatatan aktivitas admin (siapa melakukan apa, kapan).                                                                             | P2        |
-
----
-
-## 6. Kebutuhan Non-Fungsional
-
-| Kategori            | Kebutuhan                                                                                                                                                                                                                               |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Keamanan**        | Password di-hash (bcrypt/argon2); kredensial database & secret hanya via environment variable; komunikasi produksi via HTTPS; `encrypt: false` pada koneksi DB hanya untuk jaringan internal tepercaya (perlu ditinjau untuk produksi). |
-| **Kinerja**         | Connection pooling aktif (max 20 koneksi); respons API < 300 ms P95.                                                                                                                                                                    |
-| **Reliabilitas**    | Log sukses/gagal koneksi database saat startup; aplikasi fail-fast jika DB tidak tersedia.                                                                                                                                              |
-| **Maintainability** | Struktur monorepo Nx; modul terpisah per domain; linter (ESLint) + formatter (Prettier); unit test dengan Jest.                                                                                                                         |
-| **Portabilitas**    | Node.js >= 18.20.2 < 19; package manager Yarn 1.x; konfigurasi via `.env`.                                                                                                                                                              |
-| **Observability**   | Logging bawaan NestJS (Logger) untuk event penting (startup, koneksi DB).                                                                                                                                                               |
-
----
-
-## 7. Arsitektur Teknis (Current State)
+## 3. Struktur Monorepo
 
 ```
-rsisa-admin/ (Nx Monorepo)
-└── apps/
-    └── api/                        # Aplikasi NestJS
-        └── src/
-            ├── main.ts             # Bootstrap, prefix /api, load .env
-            └── app/
-                ├── app.module.ts   # Root module (Config, Database, Auth)
-                ├── app.controller  # GET / dan GET /db-check
-                ├── auth/           # Kerangka: controller, service, guard, dto, decorator
-                └── database/       # Provider global mssql ConnectionPool
+rsisa-admin/
+├── apps/
+│   ├── api/                     # NestJS backend — SATU service untuk semua frontend
+│   │   └── src/app/
+│   │       ├── auth/            # module autentikasi (JWT, guard)
+│   │       ├── database/        # provider koneksi SQL Server
+│   │       ├── app.module.ts
+│   │       └── app.controller.ts
+│   ├── dashboard/                # React app — rencana, belum digenerate
+│   └── jasa-medik/               # React app — rencana, belum digenerate
+│
+├── .env                          # tidak dipakai — env dipindah ke level app
+├── .nvmrc                        # 18.20.2
+├── .yarnrc                       # ignore-engines true
+├── nx.json
+└── package.json
 ```
 
-**Tech Stack:**
+### Keputusan desain penting
 
-- **Runtime:** Node.js 18.x, TypeScript
-- **Framework:** NestJS 10, RxJS
-- **Database:** Microsoft SQL Server (driver `mssql`)
-- **Konfigurasi:** `@nestjs/config` (global) + `dotenv`
-- **Monorepo/Build:** Nx 19 (webpack), SWC
-- **Testing:** Jest 29 (`*.spec.ts` per komponen)
-- **Quality:** ESLint, Prettier, EditorConfig
-
-**Konvensi Penting:**
-
-- Semua endpoint diawali prefix `/api`.
-- `DatabaseModule` bersifat `@Global()` — connection pool dapat di-inject di semua modul via token `DATABASE_POOL`.
-- Konfigurasi melalui environment variables: `PORT`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`.
-- Perintah: `yarn api` (serve development), `yarn build:app-api` (build), `npx nx test api` (unit test).
+- **Tidak memakai `libs/`** untuk database & auth — karena saat ini hanya ada satu backend service (`api`). Modul `database` dan `auth` diletakkan langsung di `apps/api/src/app/`, bukan di `libs/api/*`. Alasan: menghindari over-engineering untuk kebutuhan yang belum ada (multi-service backend). Bisa dipindah ke `libs/` nanti dengan `nx g move` kalau memang dibutuhkan.
+- **Tidak memakai ORM/migration** (TypeORM/Prisma) — karena database sudah ada dan terisi. Akses data akan memakai pola **repository** dengan raw query / query builder, relasi antar tabel ditangani lewat JOIN manual di level repository, direpresentasikan sebagai nested TypeScript interface.
+- **Satu backend, banyak frontend** — bukan microservices terpisah. `dashboard` dan `jasa-medik` akan jadi 2 aplikasi React berbeda yang sama-sama memanggil API dari satu NestJS app, dengan routing dipisah lewat prefix:
+  - `/api/dashboard/*` — endpoint khusus dashboard
+  - `/api/jasa-medik/*` — endpoint khusus jasa medik
+  - `/api/pasien/*`, `/api/dokter/*` — endpoint shared, dipakai kedua frontend
+- **`.env` per-app** — setiap app (`api`, dan nanti `dashboard`, `jasa-medik`) punya file `.env` sendiri di dalam folder app masing-masing (`apps/api/.env`), bukan satu `.env` global di root. Ini supaya config tidak campur aduk saat jumlah app bertambah.
 
 ---
 
-## 8. API Endpoint (Kondisi Saat Ini)
+## 4. Status Implementasi Saat Ini
 
-| Method | Path            | Deskripsi                                                                  | Auth  |
-| ------ | --------------- | -------------------------------------------------------------------------- | ----- |
-| GET    | `/api`          | Smoke test — mengembalikan `{ message: "Hello API" }`                      | Tidak |
-| GET    | `/api/db-check` | Health check database — mengembalikan `{ connected: true, result: [...] }` | Tidak |
+### ✅ Selesai
+
+- [x] Nx workspace `rsisa-admin` berhasil dibuat (preset TypeScript, package manager Yarn).
+- [x] Node version dikunci ke 18.20.2 (`.nvmrc` + `engines` di `package.json`).
+- [x] Masalah kompatibilitas dependency (sass, `@peculiar/x509` minta Node 20+) diatasi dengan `ignore-engines true` di `.yarnrc`.
+- [x] NestJS app `api` berhasil digenerate dan berjalan di `http://localhost:3000/api`.
+- [x] Global prefix `/api` sudah aktif secara default (bawaan generator Nx).
+- [x] Module `database` dibuat langsung di `apps/api/src/app/database/`, memakai driver `mssql`.
+- [x] Koneksi ke SQL Server 2016 **berhasil** — tervalidasi lewat log eksplisit saat startup:
+  ```
+  ✅ Connected to database "DBRSISA_BANJARBARU_DEVELOPMENT" at 36.92.189.58:1433
+  ```
+- [x] Endpoint test `/api/db-check` dibuat untuk verifikasi query langsung ke database.
+- [x] `.env` dipindah ke level app (`apps/api/.env`), dibaca eksplisit lewat `ConfigModule` dengan `envFilePath` berbasis `process.cwd()`.
+- [x] Script `yarn api` (alias `nx run api:serve`) sudah bisa dipakai untuk menjalankan backend.
+
+### 🔧 Sedang berjalan
+
+- [ ] Struktur folder module `auth` (`auth.module.ts`, `auth.controller.ts`, `auth.service.ts`, `auth.guard.ts`, `auth.dto.ts`, `auth.decorator.ts`) — proses generate sempat error karena command dijalankan dari direktori yang salah (`apps/api` alih-alih root workspace), sedang diperbaiki.
+
+### ⏳ Belum dimulai
+
+- [ ] Isi logic JWT authentication (login, guard, role-based access untuk dashboard vs jasa medik).
+- [ ] Generate 2 React app: `dashboard` dan `jasa-medik` (Vite bundler).
+- [ ] Generate module domain: `pasien`, `dokter` (shared), `dashboard/*`, `jasa-medik/*`.
+- [ ] Setup `libs/shared/types` untuk interface yang dipakai bersama backend & frontend.
+- [ ] Setup `libs/web/ui` (component library) dan `libs/web/api-client` — baru relevan setelah ada 2 app React.
+- [ ] Docker setup untuk deployment.
 
 ---
 
-## 9. Roadmap / Milestone
+## 5. Kendala yang Sudah Diatasi (Log Teknis)
 
-| Milestone                          | Deliverable                                                          | Estimasi          |
-| ---------------------------------- | -------------------------------------------------------------------- | ----------------- |
-| **M0 — Fondasi** ✅                | Setup Nx + NestJS, koneksi MSSQL, health check, scaffolding Auth     | Selesai           |
-| **M1 — Autentikasi**               | Login JWT, AuthGuard aktif, decorator user, integrasi tabel pengguna | Sprint berikutnya |
-| **M2 — Manajemen Pengguna & RBAC** | CRUD admin, role, permission                                         | —                 |
-| **M3 — Modul Bisnis Inti**         | Data master rumah sakit (pasien, pegawai, layanan)                   | —                 |
-| **M4 — Dashboard & Laporan**       | API agregasi data untuk dashboard admin                              | —                 |
-
----
-
-## 10. Risiko & Mitigasi
-
-| Risiko                                                                                    | Dampak | Mitigasi                                                             |
-| ----------------------------------------------------------------------------------------- | ------ | -------------------------------------------------------------------- |
-| `AuthGuard` saat ini selalu mengembalikan `true` (endpoint tidak benar-benar terproteksi) | Tinggi | Implementasikan verifikasi JWT sebelum endpoint sensitif ditambahkan |
-| Koneksi DB `encrypt: false`                                                               | Sedang | Gunakan enkripsi + sertifikat valid di lingkungan produksi           |
-| Kegagalan koneksi DB membuat aplikasi tidak bisa start                                    | Sedang | Sudah fail-fast; tambahkan retry/reconnect strategy untuk resiliensi |
-| `.env` belum ada contoh template                                                          | Rendah | Tambahkan `.env.example` ke repository                               |
+| Masalah                                      | Penyebab                                                                                             | Solusi                                                                                                                                                      |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `create-nx-workspace` gagal dengan yarn      | Konflik `package.json` di folder induk (`E:\`)                                                       | Generate pakai `npm` dulu, lalu `yarn install` di dalam folder project                                                                                      |
+| `sass@1.102.0` incompatible Node 18          | Sub-dependency `@nx/webpack` menarik versi sass terbaru yang butuh Node ≥20                          | Pin `sass@1.77.8` via `resolutions`, lalu set `ignore-engines true` di `.yarnrc` untuk sub-dependency lain (`@peculiar/x509`, dll) yang juga minta Node 20+ |
+| `config.server property is required`         | `.env` tidak ditemukan di path yang dibaca `ConfigModule` (sempat salah taruh di `apps/`, root, dst) | `.env` dipastikan ada di `apps/api/.env`, dibaca eksplisit via `path.join(process.cwd(), 'apps/api/.env')`                                                  |
+| `config.options.port must be of type number` | `ConfigService.get()` selalu return string, `<number>` generic hanya type-hint, tidak convert        | Wrap eksplisit dengan `Number(configService.get('DB_PORT'))`                                                                                                |
+| Generator NestJS taruh file di lokasi salah  | Command `nx g` dijalankan dari dalam `apps/api`, bukan dari root workspace                           | Selalu jalankan command Nx dari root (`E:\rsisa-admin`)                                                                                                     |
 
 ---
 
-## 11. Definisi Selesai (Definition of Done)
+## 6. Environment & Konfigurasi
 
-- Kode lolos lint (`nx run api:lint`) dan build (`nx run api:build`).
-- Unit test lolos (`nx run api:test`) dengan coverage ≥ 80% untuk modul yang diubah.
-- Endpoint baru terdokumentasi dan mengikuti prefix `/api`.
-- Tidak ada kredensial yang di-hardcode (semua via environment variable).
+**`apps/api/.env`** (development)
+
+```
+DB_HOST=36.92.189.58
+DB_PORT=1433
+DB_USER=sa
+DB_PASSWORD=********
+DB_NAME=DBRSISA_BANJARBARU_DEVELOPMENT
+PORT=3000
+```
+
+**Opsi koneksi MSSQL yang dipakai:**
+
+```typescript
+options: {
+  encrypt: false,               // koneksi on-premise, bukan Azure
+  trustServerCertificate: true, // hindari error self-signed certificate
+}
+```
+
+---
+
+## 7. Rencana Routing API
+
+| Endpoint                       | Konsumen                | Keterangan                                           |
+| ------------------------------ | ----------------------- | ---------------------------------------------------- |
+| `GET /api`                     | —                       | Health check default                                 |
+| `GET /api/db-check`            | —                       | Test koneksi database (sementara, untuk development) |
+| `POST /api/auth/login`         | Semua frontend          | Autentikasi, generate JWT                            |
+| `GET /api/dashboard/statistik` | `apps/dashboard`        | Data statistik untuk dashboard                       |
+| `GET /api/dashboard/laporan`   | `apps/dashboard`        | Laporan manajemen                                    |
+| `GET /api/jasa-medik/tarif`    | `apps/jasa-medik`       | Data tarif jasa medik                                |
+| `POST /api/jasa-medik/klaim`   | `apps/jasa-medik`       | Input klaim jasa medik                               |
+| `GET /api/pasien/:id`          | Semua frontend (shared) | Data pasien                                          |
+| `GET /api/dokter/:id`          | Semua frontend (shared) | Data dokter                                          |
+
+Guard/role akan dibedakan per controller (bukan per app terpisah), misalnya:
+
+```typescript
+@Roles('admin', 'manajemen')     // untuk controller dashboard
+@Roles('staf-keuangan')          // untuk controller jasa-medik
+```
+
+---
+
+## 8. Scripts yang Tersedia
+
+```json
+{
+  "scripts": {
+    "api": "nx run api:serve",
+    "build:app-api": "nx run api:build"
+  }
+}
+```
+
+Rencana penambahan setelah app React digenerate:
+
+```json
+{
+  "scripts": {
+    "dashboard": "nx run dashboard:serve",
+    "jasa-medik": "nx run jasa-medik:serve",
+    "dev": "nx run-many --target=serve --projects=api,dashboard,jasa-medik --parallel"
+  }
+}
+```
+
+---
+
+## 9. Risiko & Catatan Teknis
+
+- **`ignore-engines true`** di `.yarnrc` berarti yarn tidak lagi memblokir instalasi package yang secara resmi butuh Node lebih baru dari 18. Ini perlu diwaspadai — kalau ke depan makin banyak dependency baru yang benar-benar butuh Node 20+ API saat runtime (bukan cuma requirement label), bisa muncul bug runtime yang tidak terjadi kalau pakai Node 20.
+- **Node 18 sudah end-of-life** (April 2025). Untuk project baru jangka panjang, disarankan mempertimbangkan migrasi ke **Node 20 LTS** sebelum go-live production, meskipun untuk development saat ini Node 18.20.2 masih berjalan normal.
+- **Tidak ada migration/versioning skema database** — karena database sudah ada dan dipakai sistem lain (kemungkinan project Go `bridging-eklaim` yang juga connect ke database serupa). Perubahan skema harus dikoordinasikan manual dengan tim yang mengelola database, bukan lewat migration tool otomatis.
+
+---
+
+## 10. Langkah Selanjutnya (Next Actions)
+
+1. Selesaikan struktur module `auth` (guard, dto, decorator, service) — jalankan generator dari root workspace.
+2. Implementasi JWT login & role-based guard.
+3. Generate app `dashboard` dan `jasa-medik` (React + Vite).
+4. Buat module `pasien` sebagai contoh pertama pola repository dengan query nyata ke SQL Server (termasuk relasi JOIN).
+5. Setup `libs/shared/types` untuk konsistensi tipe data antara backend dan kedua frontend.
+6. Dokumentasi API (Swagger/OpenAPI) — belum dibahas, perlu diputuskan apakah dipakai.
